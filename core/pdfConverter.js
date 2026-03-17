@@ -1,10 +1,18 @@
 'use strict';
 
 const fs = require('fs');
+const path = require('path');
+const { pathToFileURL } = require('url');
 const pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
 const { createCanvas } = require('@napi-rs/canvas');
 
-const TARGET_WIDTH = 800;
+// CMaps e fontes padrão empacotados com pdfjs-dist — necessários para renderizar
+// texto corretamente em Node.js (sem eles, glyphs aparecem como retângulos vazios)
+const PDFJS_DIR = path.dirname(require.resolve('pdfjs-dist/package.json'));
+const CMAP_URL = pathToFileURL(path.join(PDFJS_DIR, 'cmaps') + path.sep).href;
+const STANDARD_FONT_DATA_URL = pathToFileURL(path.join(PDFJS_DIR, 'standard_fonts') + path.sep).href;
+
+const TARGET_WIDTH = 1920;
 
 // Canvas factory compatível com pdfjs-dist que usa @napi-rs/canvas
 class NapiCanvasFactory {
@@ -46,7 +54,7 @@ class NapiCanvasFactory {
  * @param {string} pdfPath - Caminho absoluto para o arquivo PDF
  * @returns {Promise<Buffer[]>} Array de Buffers PNG
  */
-async function convertPdfToImages(pdfPath) {
+async function convertPdfToImages(pdfPath, onProgress) {
   const data = new Uint8Array(fs.readFileSync(pdfPath));
 
   const canvasFactory = new NapiCanvasFactory();
@@ -54,8 +62,11 @@ async function convertPdfToImages(pdfPath) {
   const loadingTask = pdfjsLib.getDocument({
     data,
     canvasFactory,
+    cMapUrl: CMAP_URL,
+    cMapPacked: true,
+    standardFontDataUrl: STANDARD_FONT_DATA_URL,
     useSystemFonts: true,
-    disableFontFace: false,
+    disableFontFace: true,
   });
 
   const pdf = await loadingTask.promise;
@@ -79,6 +90,7 @@ async function convertPdfToImages(pdfPath) {
     }).promise;
 
     images.push(canvasAndContext.canvas.toBuffer('image/png'));
+    if (typeof onProgress === 'function') onProgress(pageNum, pdf.numPages);
   }
 
   return images;
