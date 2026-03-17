@@ -1,7 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const fs = require('fs');
 const { convertPdfToImages } = require('../core/pdfConverter');
 
 const SAMPLE_PDF = path.join(__dirname, '..', 'Exemplos', 'PDF', 'Como-Funciona-a-Plataforma-03.pdf');
@@ -22,10 +21,13 @@ test('convertPdfToImages retorna array de Buffers PNG', async () => {
   }
 });
 
-test('convertPdfToImages gera imagens com largura maxima de 800px', async () => {
+test('convertPdfToImages gera imagens com largura de 800px', async () => {
   const images = await convertPdfToImages(SAMPLE_PDF);
   for (const img of images) {
     assert.ok(img.length > 10_000, 'cada PNG deve ter mais de 10KB');
+    // Verificar largura via PNG IHDR chunk (bytes 16-19 = width uint32 big-endian)
+    const width = img.readUInt32BE(16);
+    assert.equal(width, 800, `largura deve ser 800px, mas foi ${width}px`);
   }
 });
 
