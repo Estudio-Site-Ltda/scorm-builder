@@ -28,6 +28,12 @@ async function main() {
 
   if (arg) {
     // Modo arquivo unico
+    // Rejeitar argumentos que nao sao arquivos PDF
+    if (arg.startsWith('-') || !arg.toLowerCase().endsWith('.pdf')) {
+      console.error(`Erro: Esperado um arquivo .pdf, recebido: ${arg}`);
+      console.error('Uso: node convert.js [arquivo.pdf]');
+      process.exit(1);
+    }
     const pdfPath = path.resolve(arg);
     if (!fs.existsSync(pdfPath)) {
       console.error(`Erro: Arquivo nao encontrado: ${pdfPath}`);
@@ -63,6 +69,8 @@ async function main() {
     }
 
     console.log(`\nConcluido. ${successCount}/${files.length} arquivos convertidos.`);
+    // Nota: exit code 0 mesmo com falhas parciais (ao menos 1 sucesso).
+    // Scripts automatizados devem verificar o log para erros individuais.
   }
 }
 

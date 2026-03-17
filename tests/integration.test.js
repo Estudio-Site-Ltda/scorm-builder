@@ -2,7 +2,6 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
 const { execSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
