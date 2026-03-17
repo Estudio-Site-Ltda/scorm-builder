@@ -1,10 +1,13 @@
 {
   "name": "conversor-scorm",
-  "version": "1.0.0",
-  "description": "Conversor PDF/PPT para pacotes SCORM 1.2",
-  "main": "convert.js",
+  "version": "2.0.0",
+  "description": "Conversor PDF para pacotes SCORM 1.2",
+  "main": "main.js",
   "scripts": {
-    "test": "node --test tests/pdfConverter.test.js tests/scormBuilder.test.js tests/integration.test.js"
+    "start": "electron .",
+    "build": "electron-builder",
+    "test": "node --test tests/pdfConverter.test.js tests/scormBuilder.test.js tests/integration.test.js",
+    "convert": "node convert.js"
   },
   "engines": {
     "node": ">=18"
@@ -19,6 +22,39 @@
     "pdfjs-dist": "^3.11.174"
   },
   "devDependencies": {
-    "adm-zip": "^0.5.16"
+    "adm-zip": "^0.5.16",
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.estudiossite.conversor-scorm",
+    "productName": "Conversor SCORM",
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**",
+      "core/**",
+      "node_modules/**",
+      "!node_modules/.cache/**",
+      "!**/tests/**",
+      "!convert.js",
+      "!input/**",
+      "!output/**",
+      "!docs/**",
+      "!Exemplos/**"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "**/@napi-rs/canvas/**",
+      "**/pdfjs-dist/legacy/build/**"
+    ]
   }
 }
