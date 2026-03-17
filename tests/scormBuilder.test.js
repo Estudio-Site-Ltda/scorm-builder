@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const AdmZip = require('adm-zip');
-const { buildScorm, titleFromFilename } = require('../core/scormBuilder');
+const { buildScorm, buildScormBuffer, titleFromFilename } = require('../core/scormBuilder');
 
 // PNG 1x1 pixel minimo valido
 const MINIMAL_PNG = Buffer.from(
@@ -65,4 +65,42 @@ test('buildScorm substitui todos os placeholders no player', async () => {
   assert.ok(!player.includes('{{SLIDES_JSON}}'), 'placeholder SLIDES_JSON nao substituido');
   assert.ok(player.includes('"slides/slide_01.png"'), 'player deve conter caminho do slide 1');
   assert.ok(player.includes('"slides/slide_02.png"'), 'player deve conter caminho do slide 2');
+});
+
+test('buildScormBuffer retorna Buffer com ZIP valido contendo todos os arquivos', async () => {
+  const buf = await buildScormBuffer('Curso Buffer', [MINIMAL_PNG, MINIMAL_PNG]);
+
+  assert.ok(Buffer.isBuffer(buf), 'deve ser um Buffer');
+  assert.ok(buf.length > 0, 'buffer nao pode ser vazio');
+
+  const zip = new AdmZip(buf);
+  const entries = zip.getEntries().map(e => e.entryName);
+
+  assert.ok(entries.includes('imsmanifest.xml'));
+  assert.ok(entries.includes('index.html'));
+  assert.ok(entries.includes('scorm_api.js'));
+  assert.ok(entries.includes('slides/slide_01.png'));
+  assert.ok(entries.includes('slides/slide_02.png'));
+});
+
+test('buildScormBuffer lanca erro para slides vazios', async () => {
+  await assert.rejects(
+    () => buildScormBuffer('Teste', []),
+    { message: 'slideBuffers must contain at least one slide' }
+  );
+});
+
+test('buildScormBuffer e buildScorm produzem o mesmo conteudo', async () => {
+  const tmpDir = require('os').tmpdir();
+  const outPath = require('path').join(tmpDir, 'cmp-test.zip');
+
+  await buildScorm(outPath, 'Comparacao', [MINIMAL_PNG]);
+  const diskBuf = require('fs').readFileSync(outPath);
+  const memBuf  = await buildScormBuffer('Comparacao', [MINIMAL_PNG]);
+
+  const zipDisk = new AdmZip(diskBuf);
+  const zipMem  = new AdmZip(memBuf);
+  const namesDisk = zipDisk.getEntries().map(e => e.entryName).sort();
+  const namesMem  = zipMem.getEntries().map(e => e.entryName).sort();
+  assert.deepEqual(namesMem, namesDisk, 'lista de arquivos deve ser identica');
 });

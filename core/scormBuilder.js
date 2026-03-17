@@ -2,14 +2,11 @@
 
 const fs = require('fs');
 const path = require('path');
+const { PassThrough } = require('stream');
 const archiver = require('archiver');
 
 const TEMPLATES_DIR = path.join(__dirname, 'templates');
 
-/**
- * Deriva o titulo do curso a partir do nome do arquivo.
- * Ex: "minha-aula.pdf" -> "Minha Aula"
- */
 function titleFromFilename(filename) {
   const base = path.basename(filename, path.extname(filename));
   return base
@@ -38,23 +35,15 @@ function escapeHtml(str) {
 }
 
 /**
- * Gera o arquivo ZIP SCORM 1.2.
- *
- * @param {string} outputPath - Caminho absoluto onde o ZIP sera salvo
- * @param {string} courseTitle - Titulo do curso
- * @param {Buffer[]} slideBuffers - Array de Buffers PNG (um por slide)
- * @returns {Promise<void>}
+ * Preenche um archiver com o conteúdo SCORM 1.2.
+ * Reutilizado por buildScorm e buildScormBuffer.
  */
-async function buildScorm(outputPath, courseTitle, slideBuffers) {
-  if (!slideBuffers || slideBuffers.length === 0) {
-    throw new Error('slideBuffers must contain at least one slide');
-  }
+function _populateArchive(archive, courseTitle, slideBuffers) {
   const courseId = courseIdFromTitle(courseTitle);
   const slideFilenames = slideBuffers.map((_, i) =>
     `slides/slide_${String(i + 1).padStart(2, '0')}.png`
   );
 
-  // Preencher manifesto
   const slideFileList = slideFilenames
     .map(f => `      <file href="${f}"/>`)
     .join('\n');
@@ -65,7 +54,6 @@ async function buildScorm(outputPath, courseTitle, slideBuffers) {
     .replace(/\{\{COURSE_TITLE\}\}/g, escapeXml(courseTitle))
     .replace(/\{\{SLIDE_FILE_LIST\}\}/g, slideFileList);
 
-  // Preencher player
   const slidesJson = JSON.stringify(slideFilenames);
   let player = fs.readFileSync(path.join(TEMPLATES_DIR, 'player.html'), 'utf8');
   player = player
@@ -73,7 +61,22 @@ async function buildScorm(outputPath, courseTitle, slideBuffers) {
     .replace(/\{\{SLIDE_COUNT\}\}/g, String(slideBuffers.length))
     .replace(/\{\{SLIDES_JSON\}\}/g, slidesJson);
 
-  // Montar ZIP
+  archive.append(manifest, { name: 'imsmanifest.xml' });
+  archive.append(player,   { name: 'index.html' });
+  archive.file(path.join(TEMPLATES_DIR, 'scorm_api.js'), { name: 'scorm_api.js' });
+
+  slideBuffers.forEach((buf, i) => {
+    archive.append(buf, { name: slideFilenames[i] });
+  });
+}
+
+/**
+ * Gera o ZIP SCORM 1.2 e grava em disco.
+ */
+async function buildScorm(outputPath, courseTitle, slideBuffers) {
+  if (!slideBuffers || slideBuffers.length === 0) {
+    throw new Error('slideBuffers must contain at least one slide');
+  }
   return new Promise((resolve, reject) => {
     const output = fs.createWriteStream(outputPath);
     const archive = archiver('zip', { zlib: { level: 6 } });
@@ -83,16 +86,33 @@ async function buildScorm(outputPath, courseTitle, slideBuffers) {
     archive.on('error', reject);
     archive.pipe(output);
 
-    archive.append(manifest, { name: 'imsmanifest.xml' });
-    archive.append(player, { name: 'index.html' });
-    archive.file(path.join(TEMPLATES_DIR, 'scorm_api.js'), { name: 'scorm_api.js' });
-
-    slideBuffers.forEach((buf, i) => {
-      archive.append(buf, { name: slideFilenames[i] });
-    });
-
+    _populateArchive(archive, courseTitle, slideBuffers);
     archive.finalize();
   });
 }
 
-module.exports = { buildScorm, titleFromFilename };
+/**
+ * Gera o ZIP SCORM 1.2 em memória e retorna um Buffer.
+ * Usado pelo processo principal do Electron (sem gravar em disco).
+ */
+async function buildScormBuffer(courseTitle, slideBuffers) {
+  if (!slideBuffers || slideBuffers.length === 0) {
+    throw new Error('slideBuffers must contain at least one slide');
+  }
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    const passThrough = new PassThrough();
+    passThrough.on('data',  (chunk) => chunks.push(chunk));
+    passThrough.on('end',   () => resolve(Buffer.concat(chunks)));
+    passThrough.on('error', reject);
+
+    const archive = archiver('zip', { zlib: { level: 6 } });
+    archive.on('error', reject);
+    archive.pipe(passThrough);
+
+    _populateArchive(archive, courseTitle, slideBuffers);
+    archive.finalize();
+  });
+}
+
+module.exports = { buildScorm, buildScormBuffer, titleFromFilename };
