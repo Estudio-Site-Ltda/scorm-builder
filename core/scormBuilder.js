@@ -102,12 +102,19 @@ async function buildScormBuffer(courseTitle, slideBuffers) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     const passThrough = new PassThrough();
-    passThrough.on('data',  (chunk) => chunks.push(chunk));
-    passThrough.on('end',   () => resolve(Buffer.concat(chunks)));
-    passThrough.on('error', reject);
+    passThrough.on('data', (chunk) => chunks.push(chunk));
+    passThrough.on('end',  () => resolve(Buffer.concat(chunks)));
 
     const archive = archiver('zip', { zlib: { level: 6 } });
-    archive.on('error', reject);
+
+    const onError = (err) => {
+      archive.removeAllListeners('error');
+      passThrough.removeAllListeners('error');
+      passThrough.on('error', () => {});
+      reject(err);
+    };
+    passThrough.on('error', onError);
+    archive.on('error', onError);
     archive.pipe(passThrough);
 
     _populateArchive(archive, courseTitle, slideBuffers);

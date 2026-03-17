@@ -49,9 +49,10 @@ class NapiCanvasFactory {
 
 /**
  * Converte um PDF em array de Buffers PNG (um por página).
- * Largura fixa em 800px, altura proporcional ao aspect ratio.
+ * Largura fixa em 1920px, altura proporcional ao aspect ratio.
  *
  * @param {string} pdfPath - Caminho absoluto para o arquivo PDF
+ * @param {(current: number, total: number) => void} [onProgress] - Callback opcional chamado após cada página. Recebe (paginaAtual, totalPaginas).
  * @returns {Promise<Buffer[]>} Array de Buffers PNG
  */
 async function convertPdfToImages(pdfPath, onProgress) {
