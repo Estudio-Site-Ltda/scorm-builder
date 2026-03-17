@@ -46,6 +46,9 @@ function escapeHtml(str) {
  * @returns {Promise<void>}
  */
 async function buildScorm(outputPath, courseTitle, slideBuffers) {
+  if (!slideBuffers || slideBuffers.length === 0) {
+    throw new Error('slideBuffers must contain at least one slide');
+  }
   const courseId = courseIdFromTitle(courseTitle);
   const slideFilenames = slideBuffers.map((_, i) =>
     `slides/slide_${String(i + 1).padStart(2, '0')}.png`
@@ -76,6 +79,7 @@ async function buildScorm(outputPath, courseTitle, slideBuffers) {
     const archive = archiver('zip', { zlib: { level: 6 } });
 
     output.on('close', resolve);
+    output.on('error', reject);
     archive.on('error', reject);
     archive.pipe(output);
 
