@@ -20,15 +20,15 @@ Canal no YouTube para tutoriais e orientações de uso:
 
 Tela inicial:
 
-![Tela inicial do Estudio Site SCORM Builder](img/tela1.png)
+![Tela inicial do Estudio Site SCORM Builder](docs/images/tela1.png)
 
 Tela de conversão:
 
-![Tela de conversão do Estudio Site SCORM Builder](img/tela2.png)
+![Tela de conversão do Estudio Site SCORM Builder](docs/images/tela2.png)
 
 Tela final para salvar o pacote:
 
-![Tela final do Estudio Site SCORM Builder](img/tela3.png)
+![Tela final do Estudio Site SCORM Builder](docs/images/tela3.png)
 
 ## Para que serve
 
