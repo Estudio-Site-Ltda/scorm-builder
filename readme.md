@@ -16,6 +16,20 @@ Canal no YouTube para tutoriais e orientações de uso:
 
 - https://www.youtube.com/@EstudioSite
 
+## Telas do aplicativo
+
+Tela inicial:
+
+![Tela inicial do Estudio Site SCORM Builder](img/tela1.png)
+
+Tela de conversão:
+
+![Tela de conversão do Estudio Site SCORM Builder](img/tela2.png)
+
+Tela final para salvar o pacote:
+
+![Tela final do Estudio Site SCORM Builder](img/tela3.png)
+
 ## Para que serve
 
 O aplicativo pega um PDF com várias páginas e gera um arquivo `.zip` SCORM com:
