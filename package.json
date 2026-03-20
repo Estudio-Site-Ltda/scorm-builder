@@ -1,7 +1,7 @@
 {
   "name": "conversor-scorm",
   "version": "2.0.0",
-  "description": "Conversor PDF para pacotes SCORM 1.2",
+  "description": "Estudio Site SCORM Builder - conversor PDF para pacotes SCORM 1.2",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -28,7 +28,7 @@
   },
   "build": {
     "appId": "com.estudiossite.conversor-scorm",
-    "productName": "Conversor SCORM",
+    "productName": "Estudio Site SCORM Builder",
     "win": {
       "target": "nsis"
     },

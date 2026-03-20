@@ -4,3 +4,5 @@ input/
 dist/
 *.zip
 .superpowers/
+Exemplos/
+*.log

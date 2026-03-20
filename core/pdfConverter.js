@@ -3,8 +3,15 @@
 const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
+
+// pdfjs-dist usa DOMMatrix internamente (API de browser). Polyfill necessário
+// no processo principal do Electron (Node.js puro, sem DOM).
+const { createCanvas, DOMMatrix } = require('@napi-rs/canvas');
+if (typeof globalThis.DOMMatrix === 'undefined') {
+  globalThis.DOMMatrix = DOMMatrix;
+}
+
 const pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
-const { createCanvas } = require('@napi-rs/canvas');
 
 // CMaps e fontes padrão empacotados com pdfjs-dist — necessários para renderizar
 // texto corretamente em Node.js (sem eles, glyphs aparecem como retângulos vazios)
