@@ -73,6 +73,9 @@
       display: block;
       border-radius: 5px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.5), 0 24px 64px rgba(0,0,0,0.4);
+      touch-action: none;
+      will-change: transform;
+      transform-origin: center center;
     }
 
     /* Slide transition animations */
@@ -218,12 +221,12 @@
 
     /* ── Completion toast ────────────────────────────────── */
     #completion-overlay {
-      position: absolute;
+      position: fixed;
       inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 50;
+      z-index: 300;
       pointer-events: none;
       opacity: 0;
     }
@@ -320,6 +323,32 @@
       font-family: inherit;
     }
     .completion-dismiss:hover { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.8); }
+
+    /* ── Mobile: padding reduzido ────────────────────────── */
+    @media (max-width: 768px) {
+      #slide-container { padding: 6px 6px 4px; }
+    }
+
+    /* ── Fullscreen: slide ocupa tudo, controles flutuam ── */
+    body.is-fullscreen #slide-container {
+      padding: 0;
+    }
+
+    body.is-fullscreen #controls {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 20px 16px 28px;
+      background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.75));
+      transition: opacity 0.35s ease, transform 0.35s ease;
+    }
+
+    body.is-fullscreen.controls-hidden #controls {
+      opacity: 0;
+      transform: translateY(16px);
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -337,29 +366,6 @@
     <img id="slide-img" src="" alt="Slide">
 
     <div id="slide-loader"><div class="loader-ring"></div></div>
-
-    <!-- Completion toast (inside slide-container for absolute positioning) -->
-    <div id="completion-overlay">
-      <div class="completion-card">
-        <div class="completion-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="rgb(52,211,153)" viewBox="0 0 256 256">
-            <path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"></path>
-          </svg>
-        </div>
-        <h3>Você finalizou a aula</h3>
-        <p>Pode avançar no curso ou rever<br>os slides quando desejar.</p>
-        <div class="completion-timer">
-          <div class="timer-ring">
-            <svg viewBox="0 0 20 20" fill="none" stroke-width="2">
-              <circle class="timer-track" cx="10" cy="10" r="8"/>
-              <circle class="timer-fill"  cx="10" cy="10" r="8" id="timer-arc"/>
-            </svg>
-          </div>
-          <span id="timer-label">Fechando em 5s</span>
-        </div>
-        <button class="completion-dismiss" onclick="dismissCompletion()">Fechar agora</button>
-      </div>
-    </div>
 
     <div id="arrow-right" class="edge-arrow disabled" onclick="navigate(1)">
       <div class="arrow-box">
@@ -389,12 +395,36 @@
     </div>
   </div>
 
+  <!-- Completion toast (fixed, fora de qualquer stacking context interno) -->
+  <div id="completion-overlay">
+    <div class="completion-card">
+      <div class="completion-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="rgb(52,211,153)" viewBox="0 0 256 256">
+          <path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"></path>
+        </svg>
+      </div>
+      <h3>Você finalizou a aula</h3>
+      <p>Pode avançar no curso ou rever<br>os slides quando desejar.</p>
+      <div class="completion-timer">
+        <div class="timer-ring">
+          <svg viewBox="0 0 20 20" fill="none" stroke-width="2">
+            <circle class="timer-track" cx="10" cy="10" r="8"/>
+            <circle class="timer-fill"  cx="10" cy="10" r="8" id="timer-arc"/>
+          </svg>
+        </div>
+        <span id="timer-label">Fechando em 5s</span>
+      </div>
+      <button class="completion-dismiss" onclick="dismissCompletion()">Fechar agora</button>
+    </div>
+  </div>
+
   <script>
     var slides = {{SLIDES_JSON}};
     var current = 0;
     var completed = false;
     var completionTimer = null;
     var completionShown = false;
+    var controlsHideTimer = null;
 
     var SVG_EXPAND = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#ececec" viewBox="0 0 256 256"><path d="M208,48V208H48V48Z" opacity="0.2"></path><path d="M216,48V96a8,8,0,0,1-16,0V67.31l-42.34,42.35a8,8,0,0,1-11.32-11.32L188.69,56H160a8,8,0,0,1,0-16h48A8,8,0,0,1,216,48ZM98.34,146.34,56,188.69V160a8,8,0,0,0-16,0v48a8,8,0,0,0,8,8H96a8,8,0,0,0,0-16H67.31l42.35-42.34a8,8,0,0,0-11.32-11.32ZM208,152a8,8,0,0,0-8,8v28.69l-42.34-42.35a8,8,0,0,0-11.32,11.32L188.69,200H160a8,8,0,0,0,0,16h48a8,8,0,0,0,8-8V160A8,8,0,0,0,208,152ZM67.31,56H96a8,8,0,0,0,0-16H48a8,8,0,0,0-8,8V96a8,8,0,0,0,16,0V67.31l42.34,42.35a8,8,0,0,0,11.32-11.32Z"></path></svg>';
     var SVG_COMPRESS = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#ececec" viewBox="0 0 256 256"><path d="M208,48,160,96h48ZM48,208l48-48H48Z" opacity="0.2"></path><path d="M154,103.94A8,8,0,0,0,160,96V56a8,8,0,0,0-16,0V84.69L105.66,46.34A8,8,0,0,0,94.34,57.66L132.69,96H96a8,8,0,0,0,0,16h56A8,8,0,0,0,154,103.94ZM160,144H104a8,8,0,0,0-5.66,13.66L136.69,196H96a8,8,0,0,0,0,16h64a8,8,0,0,0,8-8V160A8,8,0,0,0,160,144Zm-8,43.31-38.34-38.35H152Z"></path></svg>';
@@ -447,6 +477,7 @@
       if (navigating) return;
       var next = current + dir;
       if (next < 0 || next >= slides.length) return;
+      if (currentScale > 1) resetZoom(false);
 
       navigating = true;
 
@@ -523,9 +554,19 @@
       setTimeout(function() { overlay.style.display = 'none'; }, 400);
     }
 
+    // ── Fullscreen controls visibility ─────────────────────
+    function showControls() {
+      document.body.classList.remove('controls-hidden');
+      clearTimeout(controlsHideTimer);
+      controlsHideTimer = setTimeout(function() {
+        document.body.classList.add('controls-hidden');
+      }, 3000);
+    }
+
     // ── Edge arrows — mouse proximity ──────────────────────
     var EDGE_ZONE = 140;
     document.addEventListener('mousemove', function(e) {
+      if (document.fullscreenElement) showControls();
       var x = e.clientX, w = window.innerWidth;
       var al = document.getElementById('arrow-left');
       var ar = document.getElementById('arrow-right');
@@ -550,14 +591,102 @@
       if (e.key === 'Escape' && completionShown) dismissCompletion();
     });
 
-    // ── Touch swipe ────────────────────────────────────────
-    var touchStartX = 0;
+    // ── Pinch-to-zoom + Pan + Swipe ────────────────────────
+    var touchStartX  = 0;
+    var panStartX    = 0, panStartY = 0;
+    var currentScale = 1, currentX = 0, currentY = 0;
+    var startScale   = 1, startX   = 0, startY   = 0;
+    var isPinching   = false, isPanning = false;
+    var pinchStartDist = 0;
+    var lastTapTime  = 0;
+    var MAX_SCALE    = 4;
+
+    function getTouchDist(t) {
+      var dx = t[0].clientX - t[1].clientX;
+      var dy = t[0].clientY - t[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function applyZoom(animated) {
+      var img = document.getElementById('slide-img');
+      var sc  = document.getElementById('slide-container');
+      currentScale = Math.min(MAX_SCALE, Math.max(1, currentScale));
+      var maxX = Math.max(0, (img.offsetWidth  * currentScale - sc.offsetWidth)  / 2);
+      var maxY = Math.max(0, (img.offsetHeight * currentScale - sc.offsetHeight) / 2);
+      currentX = Math.min(maxX, Math.max(-maxX, currentX));
+      currentY = Math.min(maxY, Math.max(-maxY, currentY));
+      img.style.transition = animated ? 'transform 0.28s cubic-bezier(0.2,0,0.1,1)' : 'none';
+      img.style.transform  = 'translate(' + currentX + 'px,' + currentY + 'px) scale(' + currentScale + ')';
+    }
+
+    function resetZoom(animated) {
+      currentScale = 1; currentX = 0; currentY = 0;
+      var img = document.getElementById('slide-img');
+      img.style.transition = animated ? 'transform 0.28s cubic-bezier(0.2,0,0.1,1)' : 'none';
+      img.style.transform  = '';
+    }
+
     document.addEventListener('touchstart', function(e) {
-      touchStartX = e.changedTouches[0].clientX;
-    }, { passive: true });
+      if (document.fullscreenElement) showControls();
+
+      if (e.touches.length === 2) {
+        isPinching = true; isPanning = false;
+        pinchStartDist = getTouchDist(e.touches);
+        startScale = currentScale; startX = currentX; startY = currentY;
+        e.preventDefault();
+        return;
+      }
+
+      isPinching = false;
+      touchStartX = e.touches[0].clientX;
+
+      // duplo toque: alterna zoom 2× ↔ reset (verificado antes do pan)
+      var now = Date.now();
+      if (now - lastTapTime < 300) {
+        lastTapTime = 0;
+        isPanning = false;
+        toggleZoom();
+        return;
+      }
+      lastTapTime = now;
+
+      if (currentScale > 1) {
+        isPanning  = true;
+        panStartX  = e.touches[0].clientX;
+        panStartY  = e.touches[0].clientY;
+        startX = currentX; startY = currentY;
+      } else {
+        isPanning = false;
+      }
+    }, { passive: false });
+
+    document.addEventListener('touchmove', function(e) {
+      if (isPinching && e.touches.length === 2) {
+        currentScale = startScale * (getTouchDist(e.touches) / pinchStartDist);
+        applyZoom(false);
+        e.preventDefault();
+        return;
+      }
+      if (isPanning && e.touches.length === 1) {
+        currentX = startX + (e.touches[0].clientX - panStartX);
+        currentY = startY + (e.touches[0].clientY - panStartY);
+        applyZoom(false);
+        e.preventDefault();
+      }
+    }, { passive: false });
+
     document.addEventListener('touchend', function(e) {
-      var diff = touchStartX - e.changedTouches[0].clientX;
-      if (Math.abs(diff) > 50) navigate(diff > 0 ? 1 : -1);
+      if (isPinching) {
+        isPinching = false;
+        if (currentScale < 1.15) resetZoom(true);
+        return;
+      }
+      if (isPanning) { isPanning = false; return; }
+      // swipe só funciona sem zoom
+      if (currentScale <= 1) {
+        var diff = touchStartX - e.changedTouches[0].clientX;
+        if (Math.abs(diff) > 50) navigate(diff > 0 ? 1 : -1);
+      }
     }, { passive: true });
 
     // ── Fullscreen ─────────────────────────────────────────
@@ -569,8 +698,29 @@
       }
     }
     document.addEventListener('fullscreenchange', function() {
-      document.getElementById('btn-fullscreen').innerHTML =
-        document.fullscreenElement ? SVG_COMPRESS : SVG_EXPAND;
+      var isFs = !!document.fullscreenElement;
+      document.body.classList.toggle('is-fullscreen', isFs);
+      document.getElementById('btn-fullscreen').innerHTML = isFs ? SVG_COMPRESS : SVG_EXPAND;
+      if (isFs) {
+        showControls();
+      } else {
+        clearTimeout(controlsHideTimer);
+        document.body.classList.remove('controls-hidden');
+      }
+    });
+
+    // ── Toggle zoom (duplo clique / duplo toque) ───────────
+    var zoomBusy = false;
+    function toggleZoom() {
+      if (zoomBusy) return;
+      zoomBusy = true;
+      setTimeout(function() { zoomBusy = false; }, 400);
+      if (currentScale > 1) { resetZoom(true); } else { currentScale = 2; currentX = 0; currentY = 0; applyZoom(true); }
+    }
+
+    document.getElementById('slide-img').addEventListener('dblclick', function(e) {
+      e.stopPropagation();
+      toggleZoom();
     });
 
     // ── Init ───────────────────────────────────────────────

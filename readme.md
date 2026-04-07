@@ -126,6 +126,16 @@ Nesse modo, o sistema tenta converter todos os PDFs encontrados em `input/`.
 - Conversão via terminal: pasta `output/`
 - Conversão via aplicativo: no local escolhido na hora de salvar
 
+## Experiência mobile no player SCORM
+
+O player gerado é responsivo e otimizado para dispositivos móveis:
+
+- **Padding reduzido em telas pequenas** — em telas até 768px, o padding ao redor do slide é reduzido para maximizar a área de visualização
+- **Fullscreen dedicado** — ao entrar em tela cheia, o slide ocupa 100% da tela e os controles flutuam sobre o conteúdo com gradiente semitransparente, somindo automaticamente após 3 segundos e reaparecendo ao toque ou movimento do mouse
+- **Pinch-to-zoom** — dois dedos ampliam o slide até 4×, com pan (arrastar) para navegar pela área ampliada
+- **Duplo toque / duplo clique** — alterna entre zoom 2× e tamanho normal
+- **Swipe de navegação** — funciona apenas quando o zoom está em 1×, sem conflito com o pan
+
 ## Limitações atuais
 
 - O uso final atual é para arquivos `PDF`
